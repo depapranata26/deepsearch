@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DeepSearch — Find Anyone Anywhere</title>
+  <meta name="description" content="OSINT Username Search — Find anyone across 200+ platforms">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Background grid -->
+  <div class="bg-grid"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <span class="logo-icon">🔍</span>
+      <span class="logo-text">DeepSearch</span>
+    </div>
+    <div class="tagline">OSINT Username Search</div>
+  </header>
+
+  <!-- Hero Search -->
+  <main>
+    <div class="search-container" id="searchSection">
+      <h1>Find anyone anywhere.</h1>
+      <p class="subtitle">Search across <span id="platformCount">200+</span> platforms instantly.</p>
+
+      <div class="search-box">
+        <div class="search-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        </div>
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Enter a username (e.g. john_doe)"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button id="searchBtn" onclick="doSearch()">
+          <span class="btn-text">Search</span>
+          <span class="btn-loader" style="display:none">
+            <svg class="spinner" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4"/></svg>
+          </span>
+        </button>
+      </div>
+
+      <div class="search-hints">
+        <span>Try:</span>
+        <button class="hint" onclick="quickSearch('elonmusk')">elonmusk</button>
+        <button class="hint" onclick="quickSearch('nasa')">nasa</button>
+        <button class="hint" onclick="quickSearch('github')">github</button>
+        <button class="hint" onclick="quickSearch('pewdiepie')">pewdiepie</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="statsBar" style="display:none">
+      <div class="stat">
+        <span class="stat-value" id="statTotal">0</span>
+        <span class="stat-label">Platforms</span>
+      </div>
+      <div class="stat found">
+        <span class="stat-value" id="statFound">0</span>
+        <span class="stat-label">Found</span>
+      </div>
+      <div class="stat not-found">
+        <span class="stat-value" id="statNotFound">0</span>
+        <span class="stat-label">Not Found</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="statTime">0s</span>
+        <span class="stat-label">Search Time</span>
+      </div>
+    </div>
+
+    <!-- Category Filters -->
+    <div class="filters" id="filtersSection" style="display:none">
+      <button class="filter-btn active" data-category="all" onclick="filterCategory('all', this)">
+        All <span class="count" id="countAll">0</span>
+      </button>
+      <button class="filter-btn" data-category="social" onclick="filterCategory('social', this)">
+        Social <span class="count" id="countSocial">0</span>
+      </button>
+      <button class="filter-btn" data-category="gaming" onclick="filterCategory('gaming', this)">
+        Gaming <span class="count" id="countGaming">0</span>
+      </button>
+      <button class="filter-btn" data-category="dev" onclick="filterCategory('dev', this)">
+        Dev <span class="count" id="countDev">0</span>
+      </button>
+      <button class="filter-btn" data-category="music" onclick="filterCategory('music', this)">
+        Music <span class="count" id="countMusic">0</span>
+      </button>
+      <button class="filter-btn" data-category="design" onclick="filterCategory('design', this)">
+        Design <span class="count" id="countDesign">0</span>
+      </button>
+      <button class="filter-btn" data-category="business" onclick="filterCategory('business', this)">
+        Business <span class="count" id="countBusiness">0</span>
+      </button>
+      <button class="filter-btn" data-category="found" onclick="filterCategory('found', this)">
+        ✅ Found Only
+      </button>
+    </div>
+
+    <!-- Results Grid -->
+    <div class="results-grid" id="resultsGrid"></div>
+
+    <!-- Loading State -->
+    <div class="loading" id="loadingState" style="display:none">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Scanning platforms...</p>
+      <p class="loading-sub" id="loadingProgress">0 / 0</p>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState" style="display:none">
+      <div class="empty-icon">🔍</div>
+      <h3>No results yet</h3>
+      <p>Enter a username above to search across 200+ platforms</p>
+    </div>
+
+    <!-- No Results State -->
+    <div class="empty-state" id="noResultsState" style="display:none">
+      <div class="empty-icon">😔</div>
+      <h3>No accounts found</h3>
+      <p>This username wasn't found on any platform. Try a different one!</p>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>DeepSearch — OSINT Username Search Tool</p>
+    <p class="footer-sub">Searches publicly available data only. Use responsibly.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
