@@ -112,7 +112,7 @@ const platforms = [
 // ============================================
 // HTTP GET — short timeout
 // ============================================
-function httpGet(url, timeout = 3000) {
+function httpGet(url, timeout = 2000) {
   return new Promise((resolve) => {
     const mod = url.startsWith('https') ? https : http;
     const req = mod.get(url, {
@@ -135,7 +135,7 @@ function httpGet(url, timeout = 3000) {
 async function checkPlatform(platform, username) {
   const url = platform.url.replace('{}', username);
   try {
-    const { status } = await httpGet(url, 3500);
+    const { status } = await httpGet(url, 2500);
     const found = [200, 301, 302, 303].includes(status);
     return { name: platform.name, url, found, status, cat: platform.cat };
   } catch {
@@ -174,8 +174,8 @@ router.get('/search/stream', async (req, res) => {
   const notFound = [];
   let checked = 0;
 
-  // Check in batches of 10
-  const BATCH = 10;
+  // Check in batches of 20 for speed
+  const BATCH = 20;
   for (let i = 0; i < platforms.length; i += BATCH) {
     const batch = platforms.slice(i, i + BATCH);
     const results = await Promise.all(batch.map(p => checkPlatform(p, username)));
@@ -222,9 +222,9 @@ router.post('/search', async (req, res) => {
 
   console.log(`🔍 Searching: ${clean}`);
 
-  // Sequential checks with small concurrency
+  // Check all in parallel batches
   const results = [];
-  const CONCURRENT = 15;
+  const CONCURRENT = 20;
 
   for (let i = 0; i < platforms.length; i += CONCURRENT) {
     const batch = platforms.slice(i, i + CONCURRENT);
