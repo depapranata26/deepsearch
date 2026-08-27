@@ -22,7 +22,6 @@ const platforms = [
   { name: "Bluesky", url: "https://bsky.app/profile/{}.bsky.social", cat: "social" },
   { name: "Tumblr", url: "https://{}.tumblr.com", cat: "social" },
   { name: "VK", url: "https://vk.com/{}", cat: "social" },
-
   // GAMING
   { name: "Twitch", url: "https://www.twitch.tv/{}", cat: "gaming" },
   { name: "Steam", url: "https://steamcommunity.com/id/{}", cat: "gaming" },
@@ -30,7 +29,6 @@ const platforms = [
   { name: "Minecraft (NameMC)", url: "https://namemc.com/profile/{}", cat: "gaming" },
   { name: "Itch.io", url: "https://{}.itch.io", cat: "gaming" },
   { name: "Newgrounds", url: "https://{}.newgrounds.com", cat: "gaming" },
-
   // DEV
   { name: "GitHub", url: "https://github.com/{}", cat: "dev" },
   { name: "GitLab", url: "https://gitlab.com/{}", cat: "dev" },
@@ -49,7 +47,6 @@ const platforms = [
   { name: "Netlify", url: "https://app.netlify.com/teams/{}/", cat: "dev" },
   { name: "Stack Overflow", url: "https://stackoverflow.com/users/?tab=Accounts", cat: "dev" },
   { name: "HackerOne", url: "https://hackerone.com/{}", cat: "dev" },
-
   // MUSIC
   { name: "Spotify", url: "https://open.spotify.com/user/{}", cat: "music" },
   { name: "SoundCloud", url: "https://soundcloud.com/{}", cat: "music" },
@@ -57,7 +54,6 @@ const platforms = [
   { name: "Last.fm", url: "https://www.last.fm/user/{}", cat: "music" },
   { name: "Deezer", url: "https://www.deezer.com/profile/{}", cat: "music" },
   { name: "Genius", url: "https://genius.com/artists/{}", cat: "music" },
-
   // DESIGN
   { name: "Dribbble", url: "https://dribbble.com/{}", cat: "design" },
   { name: "Behance", url: "https://www.behance.net/{}", cat: "design" },
@@ -66,7 +62,6 @@ const platforms = [
   { name: "Figma", url: "https://www.figma.com/@{}", cat: "design" },
   { name: "Flickr", url: "https://www.flickr.com/people/{}", cat: "design" },
   { name: "500px", url: "https://500px.com/p/{}", cat: "design" },
-
   // BUSINESS
   { name: "Medium", url: "https://medium.com/@{}", cat: "business" },
   { name: "Substack", url: "https://{}.substack.com", cat: "business" },
@@ -74,18 +69,15 @@ const platforms = [
   { name: "Ko-fi", url: "https://ko-fi.com/{}", cat: "business" },
   { name: "ProductHunt", url: "https://www.producthunt.com/@{}", cat: "business" },
   { name: "AngelList", url: "https://angel.co/u/{}", cat: "business" },
-
   // FORUM
   { name: "Quora", url: "https://www.quora.com/profile/{}", cat: "forum" },
   { name: "Hacker News", url: "https://news.ycombinator.com/user?id={}", cat: "forum" },
-
   // READING
   { name: "Goodreads", url: "https://www.goodreads.com/user/show/", cat: "reading" },
   { name: "Wattpad", url: "https://www.wattpad.com/user/{}", cat: "reading" },
   { name: "Letterboxd", url: "https://letterboxd.com/{}", cat: "reading" },
   { name: "MyAnimeList", url: "https://myanimelist.net/profile/{}", cat: "reading" },
   { name: "AniList", url: "https://anilist.co/user/{}", cat: "reading" },
-
   // OTHER
   { name: "About.me", url: "https://about.me/{}", cat: "other" },
   { name: "Linktree", url: "https://linktr.ee/{}", cat: "other" },
@@ -116,7 +108,7 @@ function httpGet(url, timeout = 2000) {
     const req = mod.get(url, {
       timeout,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       },
     }, (res) => {
       res.resume();
@@ -139,7 +131,7 @@ async function checkPlatform(platform, username) {
 }
 
 // ============================================
-// BUILD EXPRESS APP
+// EXPRESS APP — API only (no static, no SPA)
 // ============================================
 const app = express();
 app.use(express.json());
@@ -210,7 +202,6 @@ app.get('/api/search/stream', async (req, res) => {
   };
 
   send('start', { username, total: platforms.length });
-
   const found = [];
   let checked = 0;
   const BATCH = 20;
@@ -229,22 +220,4 @@ app.get('/api/search/stream', async (req, res) => {
   res.end();
 });
 
-// --- Static files for Vercel ---
-const path = require('path');
-app.use(express.static(path.join(__dirname, '..', 'public')));
-
-// SPA fallback
-app.get('/{*splat}', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
-});
-
-// ============================================
-// EXPORT — works for both Vercel and local
-// ============================================
 module.exports = app;
-
-// Local dev
-if (require.main === module) {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`🔍 DeepSearch running on http://localhost:${PORT}`));
-}
