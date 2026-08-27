@@ -2,10 +2,8 @@ const express = require('express');
 const https = require('https');
 const http = require('http');
 
-const router = express.Router();
-
 // ============================================
-// PLATFORM DATABASE — Curated, high-signal platforms
+// PLATFORM DATABASE
 // ============================================
 
 const platforms = [
@@ -110,7 +108,7 @@ const platforms = [
 ];
 
 // ============================================
-// HTTP GET — short timeout
+// HTTP GET
 // ============================================
 function httpGet(url, timeout = 2000) {
   return new Promise((resolve) => {
@@ -129,9 +127,6 @@ function httpGet(url, timeout = 2000) {
   });
 }
 
-// ============================================
-// Check single platform
-// ============================================
 async function checkPlatform(platform, username) {
   const url = platform.url.replace('{}', username);
   try {
@@ -144,19 +139,65 @@ async function checkPlatform(platform, username) {
 }
 
 // ============================================
-// Stream search — SSE
+// BUILD EXPRESS APP
 // ============================================
-router.get('/search/stream', async (req, res) => {
-  const username = (req.query.username || '').trim().toLowerCase();
+const app = express();
+app.use(express.json());
 
-  if (!username || username.length < 1 || username.length > 50) {
-    return res.status(400).json({ error: 'Invalid username' });
+// CORS
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  next();
+});
+
+// --- Stats ---
+app.get('/api/stats', (req, res) => {
+  const categories = {};
+  platforms.forEach(p => { categories[p.cat] = (categories[p.cat] || 0) + 1; });
+  res.json({ totalPlatforms: platforms.length, categories });
+});
+
+// --- Search (POST) ---
+app.post('/api/search', async (req, res) => {
+  const { username } = req.body;
+  if (!username || typeof username !== 'string') {
+    return res.status(400).json({ error: 'Username is required' });
   }
-  if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+  const clean = username.trim().toLowerCase();
+  if (clean.length < 1 || clean.length > 50) {
+    return res.status(400).json({ error: 'Username must be 1-50 characters' });
+  }
+  if (!/^[a-zA-Z0-9._-]+$/.test(clean)) {
     return res.status(400).json({ error: 'Invalid characters' });
   }
 
-  // SSE headers
+  const results = [];
+  const BATCH = 20;
+  for (let i = 0; i < platforms.length; i += BATCH) {
+    const batch = platforms.slice(i, i + BATCH);
+    const batchResults = await Promise.all(batch.map(p => checkPlatform(p, clean)));
+    results.push(...batchResults);
+  }
+
+  results.sort((a, b) => {
+    if (a.found !== b.found) return b.found - a.found;
+    return a.name.localeCompare(b.name);
+  });
+
+  const found = results.filter(r => r.found).length;
+  res.json({ username: clean, total: results.length, found, notFound: results.length - found, results, timestamp: new Date().toISOString() });
+});
+
+// --- Search (SSE Stream) ---
+app.get('/api/search/stream', async (req, res) => {
+  const username = (req.query.username || '').trim().toLowerCase();
+  if (!username || !/^[a-zA-Z0-9._-]+$/.test(username) || username.length > 50) {
+    return res.status(400).json({ error: 'Invalid username' });
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -171,94 +212,39 @@ router.get('/search/stream', async (req, res) => {
   send('start', { username, total: platforms.length });
 
   const found = [];
-  const notFound = [];
   let checked = 0;
-
-  // Check in batches of 20 for speed
   const BATCH = 20;
+
   for (let i = 0; i < platforms.length; i += BATCH) {
     const batch = platforms.slice(i, i + BATCH);
     const results = await Promise.all(batch.map(p => checkPlatform(p, username)));
-    
     for (const r of results) {
       checked++;
-      if (r.found) {
-        found.push(r);
-        send('found', r);
-      }
+      if (r.found) { found.push(r); send('found', r); }
     }
-
     send('progress', { checked, total: platforms.length, foundCount: found.length });
   }
 
-  send('done', {
-    username,
-    total: platforms.length,
-    found: found.length,
-    notFound: platforms.length - found.length,
-    results: found,
-  });
-
+  send('done', { username, total: platforms.length, found: found.length, notFound: platforms.length - found.length, results: found });
   res.end();
 });
 
-// ============================================
-// POST /api/search — non-streaming fallback
-// ============================================
-router.post('/search', async (req, res) => {
-  const { username } = req.body;
+// --- Static files for Vercel ---
+const path = require('path');
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
-  if (!username || typeof username !== 'string') {
-    return res.status(400).json({ error: 'Username is required' });
-  }
-
-  const clean = username.trim().toLowerCase();
-  if (clean.length < 1 || clean.length > 50) {
-    return res.status(400).json({ error: 'Username must be 1-50 characters' });
-  }
-  if (!/^[a-zA-Z0-9._-]+$/.test(clean)) {
-    return res.status(400).json({ error: 'Invalid characters in username' });
-  }
-
-  console.log(`🔍 Searching: ${clean}`);
-
-  // Check all in parallel batches
-  const results = [];
-  const CONCURRENT = 20;
-
-  for (let i = 0; i < platforms.length; i += CONCURRENT) {
-    const batch = platforms.slice(i, i + CONCURRENT);
-    const batchResults = await Promise.all(batch.map(p => checkPlatform(p, clean)));
-    results.push(...batchResults);
-  }
-
-  results.sort((a, b) => {
-    if (a.found !== b.found) return b.found - a.found;
-    return a.name.localeCompare(b.name);
-  });
-
-  const found = results.filter(r => r.found).length;
-  console.log(`✅ ${found}/${results.length} found`);
-
-  res.json({
-    username: clean,
-    total: results.length,
-    found,
-    notFound: results.length - found,
-    results,
-    timestamp: new Date().toISOString(),
-  });
+// SPA fallback
+app.get('/{*splat}', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
 // ============================================
-// GET /api/stats
+// EXPORT — works for both Vercel and local
 // ============================================
-router.get('/stats', (req, res) => {
-  const categories = {};
-  platforms.forEach(p => {
-    categories[p.cat] = (categories[p.cat] || 0) + 1;
-  });
-  res.json({ totalPlatforms: platforms.length, categories });
-});
+module.exports = app;
 
-module.exports = router;
+// Local dev
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`🔍 DeepSearch running on http://localhost:${PORT}`));
+}
